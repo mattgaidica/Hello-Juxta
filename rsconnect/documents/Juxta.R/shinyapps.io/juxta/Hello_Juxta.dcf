@@ -1,0 +1,13 @@
+name: Hello_Juxta
+title: Hello_Juxta
+username:
+account: juxta
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8698755
+bundleId: 7020907
+url: https://juxta.shinyapps.io/Hello_Juxta/
+when: 1680047917.8258
+lastSyncTime: 1680047917.82582
+asMultiple: FALSE
+asStatic: FALSE
