@@ -69,25 +69,25 @@ HUX8768,xl,0.00,1679781028
 HUX8768,mg,0.00,1679781029
 HUX8768,xl,0.00,1679781036
 HUX8768,deg_c,17.75,1679781051
-HUX8768,vbatt,3.33,1679781051
+HUX8768,vbatt,3.32,1679781051
 HUX8768,deg_c,17.75,1679781231
 HUX8768,vbatt,3.33,1679781231
 HUX8768,deg_c,17.75,1679781411
-HUX8768,vbatt,3.33,1679781411
+HUX8768,vbatt,3.32,1679781411
 HUX8768,deg_c,17.75,1679781591
 HUX8768,vbatt,3.33,1679781591
 HUX8768,deg_c,17.75,1679781771
 HUX8768,vbatt,3.33,1679781771
 HUX8768,deg_c,17.75,1679781951
-HUX8768,vbatt,3.33,1679781951
+HUX8768,vbatt,3.31,1679781951
 HUX8768,deg_c,17.75,1679782131
 HUX8768,vbatt,3.33,1679782131
 HUX8768,deg_c,17.75,1679782311
-HUX8768,vbatt,3.33,1679782311
+HUX8768,vbatt,3.34,1679782311
 HUX8768,deg_c,17.75,1679782491
-HUX8768,vbatt,3.33,1679782491
+HUX8768,vbatt,3.32,1679782491
 HUX8768,deg_c,17.75,1679782671
-HUX8768,vbatt,3.33,1679782671
+HUX8768,vbatt,3.31,1679782671
 HUX8768,deg_c,17.75,1679782851"),
           width = 5
         ),
@@ -208,7 +208,8 @@ server <- function(input, output, session) {
       theme_minimal() +
       theme(axis.title.x = element_blank(),
             axis.title.y = element_text(color = "blue"),
-            axis.text.y = element_text(color = "blue"))
+            axis.text.y = element_text(color = "blue")) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   })
   
   output$vbatt_plot <- renderPlot({
@@ -228,7 +229,9 @@ server <- function(input, output, session) {
       theme_minimal() +
       theme(axis.title.x = element_blank(),
             axis.title.y = element_text(color = "red"),
-            axis.text.y = element_text(color = "red"))
+            axis.text.y = element_text(color = "red")) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    
   })
   
   output$xl_hist <- renderPlot({
