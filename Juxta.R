@@ -4,6 +4,7 @@ library(ggplot2)
 library(tidyr)
 library(dplyr)
 library(lubridate)
+library(rclipboard)
 
 # Set option to display warnings in the browser console
 options(shiny.sanitize.errors = FALSE)
@@ -29,19 +30,8 @@ ui <- fluidPage(
         br(),
        sidebarLayout(
          sidebarPanel(
-           textAreaInput("log_input_text", "Enter log data:", value="my_mac,their_mac,rssi,local_time
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AD,-86,1680043326
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AD,-86,615148862
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AA,-67,1680043386
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AA,-67,615345530
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AD,-57,1680043446
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AD,-57,615148982
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AA,-78,1680043506
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AA,-64,615345650
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:AA,-102,615345650
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:92,-100,615345699
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:44,-88,615345699
-6C:B2:FD:CE:24:B2,6C:B2:FD:CE:24:44,-72,615349699"),
+           textAreaInput("log_input_text", "Enter log data:", value = paste(readLines("log_sample.txt"), collapse = "\n")),
+           actionButton("clear_log", "Clear"),
            width = 5
          ),
          mainPanel(
@@ -57,49 +47,21 @@ ui <- fluidPage(
       br(),
       sidebarLayout(
         sidebarPanel(
-          textAreaInput("meta_input_text", "Enter meta data:", value="subject,data_type,data_value,local_time
-HUX8768,conn,0.00,1679780520
-HUX8768,conn,0.00,1679780577
-HUX8768,mg,0.00,1679780631
-HUX8768,deg_c,18.00,1679780691
-HUX8768,vbatt,3.34,1679780691
-HUX8768,conn,0.00,1679780719
-HUX8768,deg_c,18.75,1679780871
-HUX8768,vbatt,3.34,1679780871
-HUX8768,conn,0.00,1679780958
-HUX8768,conn,0.00,1679780994
-HUX8768,xl,0.00,1679781028
-HUX8768,mg,0.00,1679781029
-HUX8768,xl,0.00,1679781036
-HUX8768,deg_c,17.75,1679781051
-HUX8768,vbatt,3.32,1679781051
-HUX8768,deg_c,17.75,1679781231
-HUX8768,vbatt,3.33,1679781231
-HUX8768,deg_c,17.75,1679781411
-HUX8768,vbatt,3.32,1679781411
-HUX8768,deg_c,17.75,1679781591
-HUX8768,vbatt,3.33,1679781591
-HUX8768,deg_c,17.75,1679781771
-HUX8768,vbatt,3.33,1679781771
-HUX8768,deg_c,17.75,1679781951
-HUX8768,vbatt,3.31,1679781951
-HUX8768,deg_c,17.75,1679782131
-HUX8768,vbatt,3.33,1679782131
-HUX8768,deg_c,17.75,1679782311
-HUX8768,vbatt,3.34,1679782311
-HUX8768,deg_c,17.75,1679782491
-HUX8768,vbatt,3.32,1679782491
-HUX8768,deg_c,17.75,1679782671
-HUX8768,vbatt,3.31,1679782671
-HUX8768,deg_c,17.75,1679782851"),
+          textAreaInput("meta_input_text", "Enter meta data:", value = paste(readLines("meta_sample.txt"), collapse = "\n")),
+          actionButton("clear_meta", "Clear"),
           width = 5
         ),
         mainPanel(
           helpText("Temperature (°C)", align = "center"),
           plotOutput("deg_c_plot", height = "200px"),
+          br(),
           helpText("Battery (V)", align = "center"),
           plotOutput("vbatt_plot", height = "200px"),
-          helpText("Movement", align = "center"),
+          br(),
+          helpText("Movement over Time (binned)", align = "center"),
+          plotOutput("xl_time", height = "200px"),
+          br(),
+          helpText("Movement by Hour of Day", align = "center"),
           plotOutput("xl_hist", height = "200px"),
           width = 7
         )
@@ -109,6 +71,14 @@ HUX8768,deg_c,17.75,1679782851"),
 )
 
 server <- function(input, output, session) {
+  observeEvent(input$clear_log, {
+    updateTextAreaInput(session, "log_input_text", value = "")
+  })
+  
+  observeEvent(input$clear_meta, {
+    updateTextAreaInput(session, "meta_input_text", value = "")
+  })
+  
   # Function to create graph from input text
   createGraph <- function(text) {
     # Split text by rows and columns
@@ -199,15 +169,12 @@ server <- function(input, output, session) {
       subset_data <- input_df %>%
         filter(data_type == "deg_c")
       
-      # Convert local_time to a datetime format
-      subset_data$local_time <- as.POSIXct(subset_data$local_time, origin = "1970-01-01")
-      
       # Create the plot for deg_c
       ggplot(subset_data, aes(x = local_time, y = as.numeric(data_value))) +
         geom_line(color = "blue") +
         ylab("deg_c") +
         scale_x_datetime(date_breaks = "1 hour", date_labels = "%m/%d %H:%M") +
-        scale_y_continuous(limits = c(15, 35), expand = expand_scale(mult = c(0, 0.1))) +
+        # scale_y_continuous(limits = c(15, 35), expand = expand_scale(mult = c(0, 0.1))) +
         theme_minimal() +
         theme(axis.title.x = element_blank(),
               axis.title.y = element_text(color = "blue"),
@@ -219,9 +186,6 @@ server <- function(input, output, session) {
       # Subset the input data to only include "vbatt" data type
       subset_data <- input_df %>%
         filter(data_type == "vbatt")
-      
-      # Convert local_time to a datetime format
-      subset_data$local_time <- as.POSIXct(subset_data$local_time, origin = "1970-01-01")
       
       # Create the plot for vbatt
       ggplot(subset_data, aes(x = local_time, y = as.numeric(data_value))) +
@@ -237,16 +201,42 @@ server <- function(input, output, session) {
       
     })
     
+    output$xl_time <- renderPlot({
+      # Filter input_df to only include "xl" events and their local_time values
+      # subset_data <- subset(input_df, data_type == "xl", select = c("local_time"))
+      subset_data <- input_df %>%
+        filter(data_type == "xl")
+      
+      # Calculate start and end times for plot
+      start_time <- min(input_df$local_time)
+      end_time <- max(input_df$local_time)
+      
+      # Create sequence of hourly time intervals
+      time_seq <- seq(start_time, end_time, by = "hour")
+      if (length(time_seq) == 1) {
+        message("Not enough data to create plot.")
+        return()
+      }
+      
+      # Bin time values into hourly intervals and count "xl" events
+      xl_events_per_hour <- table(cut(subset_data$local_time, time_seq))
+      
+      # Convert results to data frame
+      xl_events_df <- data.frame(hour = as.POSIXct(names(xl_events_per_hour)), 
+                                 count = as.numeric(xl_events_per_hour))
+      
+      # Create bar plot using ggplot2
+      ggplot(xl_events_df, aes(x = hour, y = count)) +
+        geom_bar(stat = "identity") +
+        scale_x_datetime(date_breaks = "1 hour", date_labels = "%m/%d %H:%M") +
+        labs(x = "Time", y = "XL per hour") + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    })
+    
     output$xl_hist <- renderPlot({
       # Subset the input data to only include "xl" data type
       subset_data <- input_df %>%
         filter(data_type == "xl")
-      
-      # Filter out rows with missing local_time values
-      subset_data <- subset_data %>% filter(!is.na(local_time))
-      
-      # Convert local_time to a datetime format
-      subset_data$local_time <- as.POSIXct(subset_data$local_time, origin = "1970-01-01")
       
       # Extract hour of day from local_time
       subset_data$hour_of_day <- hour(subset_data$local_time)
