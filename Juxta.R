@@ -32,14 +32,14 @@ ui <- fluidPage(
          sidebarPanel(
            textAreaInput("log_input_text", "Enter log data:", value = paste(readLines("log_sample.txt"), collapse = "\n")),
            actionButton("clear_log", "Clear"),
-           width = 5
+           width = 6
          ),
          mainPanel(
            helpText("Social Network", align = "center"),
            plotOutput("social_plot"),
            helpText("RSSI vs. MAC", align = "center"),
            plotOutput("rssi_plot"),
-           width = 7
+           width = 6
          )
        )
     ),
@@ -49,7 +49,7 @@ ui <- fluidPage(
         sidebarPanel(
           textAreaInput("meta_input_text", "Enter meta data:", value = paste(readLines("meta_sample.txt"), collapse = "\n")),
           actionButton("clear_meta", "Clear"),
-          width = 5
+          width = 6
         ),
         mainPanel(
           helpText("Temperature (°C)", align = "center"),
@@ -63,7 +63,7 @@ ui <- fluidPage(
           br(),
           helpText("Movement by Hour of Day", align = "center"),
           plotOutput("xl_hist", height = "200px"),
-          width = 7
+          width = 6
         )
       )
     )
@@ -87,15 +87,11 @@ server <- function(input, output, session) {
     # Remove header row
     cols <- cols[-1]
     # Select first two columns
-    cols <- lapply(cols, function(x) x[1:2])
-    # Check that cols has the same length
-    if (length(cols[[1]]) != length(cols[[2]])) {
-      stop("Invalid input: column lengths do not match")
-    }
+    cols <- lapply(cols, function(x) x[2:3])
     # Convert MAC addresses to vertices
     vertices <- unique(unlist(cols))
     # Create graph and add edges
-    edges <- data.frame(from = cols[[1]], to = cols[[2]])
+    edges <- data.frame(from = cols[[2]], to = cols[[3]])
     edges$weight <- 1
     for (i in 2:length(cols)) {
       from <- cols[[i]][1]
@@ -131,7 +127,7 @@ server <- function(input, output, session) {
     
     output$rssi_plot <- renderPlot({
       data <- read.table(text = input$log_input_text, sep = ",", header = TRUE)
-      data <- data[,-c(1,4)]
+      data <- data[, c("their_mac", "rssi")]
       data$rssi <- as.numeric(data$rssi)
       # agg_df <- aggregate(data[, 3], list(data[, 2]), FUN = function(x) c(mean = mean(x), std = sd(x)))
       gather_df <- gather(data, key = "Stat", value = "rssi", -their_mac)
@@ -156,11 +152,16 @@ server <- function(input, output, session) {
     input_text <- gsub("\r", "", input_text)
     input_text <- strsplit(input_text, "\n")
     input_text <- unlist(input_text)
-    input_text <- input_text[-1] # remove the header row
+    # split input_text into a list of vectors
     input_text <- strsplit(input_text, ",")
+    # extract the first element of input_text as column names
+    colnames <- unlist(input_text[1])
+    # remove the first element from input_text
+    input_text <- input_text[-1]
+    # convert the remaining elements of input_text into a data frame
     input_df <- data.frame(do.call(rbind, input_text))
-    colnames(input_df) <- c("subject", "data_type", "data_value", "local_time")
-    # input_df$local_time <- as.POSIXct(input_df$local_time, format = "%s", origin = "1970-01-01", tzone = "ET")
+    # set the column names of input_df
+    colnames(input_df) <- colnames
     input_df$local_time <- with_tz(as.POSIXct(input_df$local_time, format = "%s", origin = "1970-01-01"), tzone = "GMT") %>%
       with_tz(tzone = "America/New_York")
     
@@ -192,7 +193,7 @@ server <- function(input, output, session) {
         geom_line(color = "red") +
         ylab("vbatt") +
         scale_x_datetime(date_breaks = "1 hour", date_labels = "%m/%d %H:%M") +
-        scale_y_continuous(limits = c(2, 5), expand = expand_scale(mult = c(0, 0.1))) +
+        scale_y_continuous(limits = c(2, 5), expand = expansion(mult = c(0, 0.1))) +
         theme_minimal() +
         theme(axis.title.x = element_blank(),
               axis.title.y = element_text(color = "red"),
@@ -206,10 +207,21 @@ server <- function(input, output, session) {
       # subset_data <- subset(input_df, data_type == "xl", select = c("local_time"))
       subset_data <- input_df %>%
         filter(data_type == "xl")
-      
       # Calculate start and end times for plot
-      start_time <- min(input_df$local_time)
-      end_time <- max(input_df$local_time)
+      # set a minimum date of Jan 1, 2023
+      min_date <- as.POSIXct("2023-01-01 00:00:00")
+      # remove all dates less than min_date
+      input_df <- input_df[input_df$local_time >= min_date, ]
+      # set start_time to the minimum value of local_time, if remaining data exists
+      if (nrow(input_df) > 0) {
+        start_time <- min(input_df$local_time)
+      } else {
+        start_time <- max_date # or whatever value you want to set as the default start_time
+      }
+      # set the maximum date to the current time
+      max_date <- Sys.time()
+      # limit end_time to be no later than max_date
+      end_time <- pmin(max_date, max(input_df$local_time))
       
       # Create sequence of hourly time intervals
       time_seq <- seq(start_time, end_time, by = "hour")
