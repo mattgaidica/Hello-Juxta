@@ -5,9 +5,9 @@ account: juxta
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8698755
-bundleId: 7165006
+bundleId: 7169805
 url: https://juxta.shinyapps.io/Hello_Juxta/
-when: 1683050262.40503
-lastSyncTime: 1683050262.40504
+when: 1683132267.46759
+lastSyncTime: 1683132267.4676
 asMultiple: FALSE
 asStatic: FALSE
