@@ -52,9 +52,9 @@ ui <- fluidPage(
           width = 6
         ),
         mainPanel(
-          helpText("Temperature (°C)", align = "center"),
-          plotOutput("deg_c_plot", height = "200px"),
-          br(),
+          # helpText("Temperature (°C)", align = "center"),
+          # plotOutput("deg_c_plot", height = "200px"),
+          # br(),
           helpText("Battery (V)", align = "center"),
           plotOutput("vbatt_plot", height = "200px"),
           br(),
